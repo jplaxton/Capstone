@@ -2,21 +2,24 @@
 title: "Capstone Project"
 author: "John Plaxton"
 date: "November 6, 2018"
-output: html_document
+output:
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-library(readtext)
 library(quanteda)
+library(readtext)
+library(spacyr)
 library(tidyverse)
+quanteda_options(threads=7)
 ```
 
-## R Markdown
+## Create a Corpus
 
 Three copora files are provided for the capstone project.  How do I read into R?  The following code answers the questions for the week 1 quiz.
 
-```{r reading_corpora}
+```{r quiz 1 output}
 con <- file("./final/en_US/en_US.twitter.txt", "r") 
 size<-file.info("./final/en_US/en_US.blogs.txt")
 kb<-size$size/1024
@@ -62,12 +65,18 @@ close(con) ## It's important to close the connection when you are done
 
 ```
 
-## Including Plots
+## Create a Corpus
 
-You can also embed plots, for example:
+Create a Corpus from the provided .txt files...
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+```{r create_corpus}
+textin <- readtext("./final/en_US/*.txt")
+my_corpus <- corpus(textin)
+metadoc(my_corpus, "language") <- "english"
+summary(my_corpus, showmeta = TRUE)
+
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+```{r cleanup}
+quanteda_options(threads=2)
+```
