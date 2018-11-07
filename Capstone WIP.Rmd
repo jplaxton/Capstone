@@ -1,0 +1,73 @@
+---
+title: "Capstone Project"
+author: "John Plaxton"
+date: "November 6, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(readtext)
+library(quanteda)
+library(tidyverse)
+```
+
+## R Markdown
+
+Three copora files are provided for the capstone project.  How do I read into R?  The following code answers the questions for the week 1 quiz.
+
+```{r reading_corpora}
+con <- file("./final/en_US/en_US.twitter.txt", "r") 
+size<-file.info("./final/en_US/en_US.blogs.txt")
+kb<-size$size/1024
+mb<-kb/1024
+mb
+
+twitter <- readLines(con <- file("./final/en_US/en_US.twitter.txt"), encoding = "UTF-8", skipNul = TRUE)
+length(twitter)
+
+
+#Blogs file
+blogs<-file("./final/en_US/en_US.blogs.txt","r")
+blogs_lines<-readLines(blogs)
+close(blogs)
+summary(nchar(blogs_lines))
+
+# News file
+news<-file("./final/en_US/en_US.news.txt","r")
+news_lines<-readLines(news)
+close(news)
+summary(nchar(news_lines))
+
+# Twitter file
+twitter<-file("./final/en_US/en_US.twitter.txt","r")
+twitter_lines<-readLines(twitter)
+close(twitter)
+summary(nchar(twitter_lines))
+
+love<-length(grep("love", twitter_lines))
+hate<-length(grep("hate", twitter_lines))
+love/hate
+
+grep("biostats", twitter_lines, value = T)
+
+grep("A computer once beat me at chess, but it was no match for me at kickboxing", twitter_lines)
+
+
+con <- file("./final/en_US/en_US.twitter.txt", "r") 
+readLines(con, 1) ## Read the first line of text 
+readLines(con, 1) ## Read the next line of text 
+readLines(con, 5) ## Read in the next 5 lines of text 
+close(con) ## It's important to close the connection when you are done
+
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
