@@ -12,7 +12,7 @@ library(quanteda)
 library(readtext)
 library(spacyr)
 library(tidyverse)
-quanteda_options(threads=7)
+quanteda_options(threads=parallel::detectCores() - 1)
 ```
 
 ## Create a Corpus
@@ -25,6 +25,7 @@ size<-file.info("./final/en_US/en_US.blogs.txt")
 kb<-size$size/1024
 mb<-kb/1024
 mb
+close(con)
 
 twitter <- readLines(con <- file("./final/en_US/en_US.twitter.txt"), encoding = "UTF-8", skipNul = TRUE)
 length(twitter)
@@ -68,6 +69,8 @@ close(con) ## It's important to close the connection when you are done
 ## Create a Corpus
 
 Create a Corpus from the provided .txt files...
+
+Translating unstructured content from a corpus of information into a meaningful knowledge base is the task of NLP.  It is important to determine what information to keep and how to look for patterns in the structure of that information to distill meaning and context.
 
 ```{r create_corpus}
 textin <- readtext("./final/en_US/*.txt")
