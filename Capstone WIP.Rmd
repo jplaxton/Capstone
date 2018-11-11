@@ -12,7 +12,7 @@ library(quanteda)
 library(readtext)
 library(spacyr)
 library(tidyverse)
-quanteda_options(threads=7)
+quanteda_options(threads=parallel::detectCores() - 1)
 ```
 
 ## Create a Corpus
@@ -25,6 +25,7 @@ size<-file.info("./final/en_US/en_US.blogs.txt")
 kb<-size$size/1024
 mb<-kb/1024
 mb
+close(con)
 
 twitter <- readLines(con <- file("./final/en_US/en_US.twitter.txt"), encoding = "UTF-8", skipNul = TRUE)
 length(twitter)
@@ -69,14 +70,43 @@ close(con) ## It's important to close the connection when you are done
 
 Create a Corpus from the provided .txt files...
 
-```{r create_corpus}
-textin <- readtext("./final/en_US/*.txt")
+Translating unstructured content from a corpus of information into a meaningful knowledge base is the task of NLP.  It is important to determine what information to keep and how to look for patterns in the structure of that information to distill meaning and context.
+
+```{r create_corpus, cache=TRUE}
+textin <- readtext("./final/en_US/*.txt", cache = FALSE)
 my_corpus <- corpus(textin)
 metadoc(my_corpus, "language") <- "english"
 summary(my_corpus, showmeta = TRUE)
 
 ```
+## Exploratory Analysis
 
-```{r cleanup}
+The first step in building a predictive model for text is understanding the distribution and relationship between the words, tokens, and phrases in the text. The goal of this task is to understand the basic relationships you observe in the data and prepare to build your first linguistic models.
+
+###Tasks to accomplish
+
+1. **Exploratory analysis** - perform a thorough exploratory analysis of the data, understanding the distribution of words and relationship between the words in the corpora.
+2. **Understand frequencies of words and word pairs** - build figures and tables to understand variation in the frequencies of words and word pairs in the data.
+
+###Questions to consider
+
+1. Some words are more frequent than others - what are the distributions of word frequencies?
+```{r tokenize}
+#tokens(my_corpus, remove_numbers = TRUE, remove_punct = TRUE, remove_separators = TRUE)
+
+# make a dfm, removing stopwords and applying stemming
+myStemMat <- dfm(my_corpus, remove = stopwords("english"), stem = TRUE, remove_punct = TRUE)
+topfeatures(myStemMat, 20)  # 20 top words
+set.seed(100)
+textplot_wordcloud(myStemMat, min_count = 6, random_order = FALSE,
+                   rotation = .25, 
+                   color = RColorBrewer::brewer.pal(8,"Dark2"))
+```
+2. What are the frequencies of 2-grams and 3-grams in the dataset?
+3. How many unique words do you need in a frequency sorted dictionary to cover 50% of all word instances in the language? 90%?
+4. How do you evaluate how many of the words come from foreign languages?
+5. Can you think of a way to increase the coverage -- identifying words that may not be in the corpora or using a smaller number of words in the dictionary to cover the same number of phrases?
+
+```{r cleanup, include=FALSE}
 quanteda_options(threads=2)
 ```
