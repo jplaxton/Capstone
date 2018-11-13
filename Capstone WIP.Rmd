@@ -72,6 +72,7 @@ Create a Corpus from the provided .txt files...
 
 Translating unstructured content from a corpus of information into a meaningful knowledge base is the task of NLP.  It is important to determine what information to keep and how to look for patterns in the structure of that information to distill meaning and context.
 
+
 ```{r create_corpus, cache=TRUE}
 textin <- readtext("./final/en_US/*.txt", cache = FALSE)
 my_corpus <- corpus(textin)
