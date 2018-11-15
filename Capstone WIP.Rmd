@@ -2,6 +2,9 @@
 title: "Capstone Project"
 author: "John Plaxton"
 date: "November 6, 2018"
+bibliography: ['citations.bib']
+biblio-style: "apalike"
+link-citations: true
 output:
   html_document: default
 ---
@@ -84,6 +87,10 @@ summary(my_corpus, showmeta = TRUE)
 
 The first step in building a predictive model for text is understanding the distribution and relationship between the words, tokens, and phrases in the text. The goal of this task is to understand the basic relationships you observe in the data and prepare to build your first linguistic models.
 
+> We thus define the tidy text format as being a table with one-token-per-row. A token is a meaningful unit of text, such as a word, that we are interested in using for analysis, and tokenization is the process of splitting text into tokens. This one-token-per-row structure is in contrast to the ways text is often stored in current analyses, perhaps as strings or in a document-term matrix. For tidy text mining, the token that is stored in each row is most often a single word, but can also be an n-gram, sentence, or paragraph. In the tidytext package, we provide functionality to tokenize by commonly used units of text like these and convert to a one-term-per-row format. [@TextMining_R]
+
+A token is a meaningful unit of text, most often a word, that we are interested in using for further analysis, and tokenization is the process of splitting text into tokens.
+
 ###Tasks to accomplish
 
 1. **Exploratory analysis** - perform a thorough exploratory analysis of the data, understanding the distribution of words and relationship between the words in the corpora.
@@ -103,6 +110,42 @@ textplot_wordcloud(myStemMat, min_count = 6, random_order = FALSE,
                    rotation = .25, 
                    color = RColorBrewer::brewer.pal(8,"Dark2"))
 ```
+
+```{r tidytext_method}
+library(janeaustenr)
+library(dplyr)
+library(stringr)
+
+original_books <- austen_books() %>%
+  group_by(book) %>%
+  mutate(linenumber = row_number(),
+         chapter = cumsum(str_detect(text, regex("^chapter [\\divxlc]",
+                                                 ignore_case = TRUE)))) %>%
+  ungroup()
+
+original_books
+library(tidytext)
+tidy_books <- original_books %>%
+  unnest_tokens(word, text)
+
+tidy_booksdata(stop_words)
+
+tidy_books <- tidy_books %>%
+  anti_join(stop_words)
+tidy_books %>%
+  count(word, sort = TRUE)
+library(ggplot2)
+
+tidy_books %>%
+  count(word, sort = TRUE) %>%
+  filter(n > 600) %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(word, n)) +
+  geom_col() +
+  xlab(NULL) +
+  coord_flip()
+```
+
 2. What are the frequencies of 2-grams and 3-grams in the dataset?
 3. How many unique words do you need in a frequency sorted dictionary to cover 50% of all word instances in the language? 90%?
 4. How do you evaluate how many of the words come from foreign languages?
