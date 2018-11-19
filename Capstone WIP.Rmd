@@ -15,12 +15,13 @@ library(quanteda)
 library(readtext)
 library(spacyr)
 library(tidyverse)
-quanteda_options(threads=parallel::detectCores() - 1)
+library(tidytext)
+#quanteda_options(threads=parallel::detectCores() - 2)
 ```
 
-## Create a Corpus
+## Week 1 Quiz
 
-Three copora files are provided for the capstone project.  How do I read into R?  The following code answers the questions for the week 1 quiz.
+The following code answers the questions for the week 1 quiz.
 
 ```{r quiz 1 output}
 con <- file("./final/en_US/en_US.twitter.txt", "r") 
@@ -61,11 +62,16 @@ grep("biostats", twitter_lines, value = T)
 grep("A computer once beat me at chess, but it was no match for me at kickboxing", twitter_lines)
 
 
-con <- file("./final/en_US/en_US.twitter.txt", "r") 
-readLines(con, 1) ## Read the first line of text 
-readLines(con, 1) ## Read the next line of text 
-readLines(con, 5) ## Read in the next 5 lines of text 
-close(con) ## It's important to close the connection when you are done
+#con <- file("./final/en_US/en_US.twitter.txt", "r") 
+#readLines(con, 1) ## Read the first line of text 
+#readLines(con, 1) ## Read the next line of text 
+#readLines(con, 5) ## Read in the next 5 lines of text 
+#close(con) ## It's important to close the connection when you are done
+
+#cleanup large charcter vectors
+rm(blogs_lines)
+rm(news_lines)
+rm(twitter_lines)
 
 ```
 
@@ -75,14 +81,14 @@ Create a Corpus from the provided .txt files...
 
 Translating unstructured content from a corpus of information into a meaningful knowledge base is the task of NLP.  It is important to determine what information to keep and how to look for patterns in the structure of that information to distill meaning and context.
 
-
 ```{r create_corpus, cache=TRUE}
-textin <- readtext("./final/en_US/*.txt", cache = FALSE)
+# without the encoding="UTF-8" the output (textin) is polluted with â characters
+textin <- readtext("./final/en_US/*.txt", encoding = "UTF-8", cache = FALSE)
 my_corpus <- corpus(textin)
 metadoc(my_corpus, "language") <- "english"
 summary(my_corpus, showmeta = TRUE)
-
 ```
+
 ## Exploratory Analysis
 
 The first step in building a predictive model for text is understanding the distribution and relationship between the words, tokens, and phrases in the text. The goal of this task is to understand the basic relationships you observe in the data and prepare to build your first linguistic models.
@@ -94,24 +100,28 @@ A token is a meaningful unit of text, most often a word, that we are interested 
 ###Tasks to accomplish
 
 1. **Exploratory analysis** - perform a thorough exploratory analysis of the data, understanding the distribution of words and relationship between the words in the corpora.
+
 2. **Understand frequencies of words and word pairs** - build figures and tables to understand variation in the frequencies of words and word pairs in the data.
 
 ###Questions to consider
 
 1. Some words are more frequent than others - what are the distributions of word frequencies?
 ```{r tokenize}
-#tokens(my_corpus, remove_numbers = TRUE, remove_punct = TRUE, remove_separators = TRUE)
+dataTokens <- tokens(my_corpus, what='word', remove_numbers = TRUE, 
+                     remove_punct = TRUE, remove_symbols = TRUE, remove_separators = TRUE)
 
 # make a dfm, removing stopwords and applying stemming
-myStemMat <- dfm(my_corpus, remove = stopwords("english"), stem = TRUE, remove_punct = TRUE)
+myStemMat <- dfm(my_corpus, remove = stopwords("english"), stem = TRUE, 
+                 remove_punct = TRUE, remove_symbols = TRUE, remove_separators = TRUE)
+myStemMat_td <- tidy(myStemMat)
 topfeatures(myStemMat, 20)  # 20 top words
-set.seed(100)
+mysterytext <-set.seed(123)
 textplot_wordcloud(myStemMat, min_count = 6, random_order = FALSE,
                    rotation = .25, 
                    color = RColorBrewer::brewer.pal(8,"Dark2"))
 ```
 
-```{r tidytext_method}
+```{r tidytext_method, echo=FALSE, eval=FALSE}
 library(janeaustenr)
 library(dplyr)
 library(stringr)
@@ -157,6 +167,87 @@ tidy_books %>%
 
 5. Can you think of a way to increase the coverage -- identifying words that may not be in the corpora or using a smaller number of words in the dictionary to cover the same number of phrases?
 
+##Visualizing a network of bigrams with ggraph
+
+```{r network_viz, eval=FALSE}
+library(igraph)
+
+# original counts
+bigram_counts
+bigram_graph <- bigram_counts %>%
+  filter(n > 20) %>%
+  graph_from_data_frame()
+
+bigram_graph
+set.seed(2016)
+
+a <- grid::arrow(type = "closed", length = unit(.15, "inches"))
+
+ggraph(bigram_graph, layout = "fr") +
+  geom_edge_link(aes(edge_alpha = n), show.legend = FALSE,
+                 arrow = a, end_cap = circle(.07, 'inches')) +
+  geom_node_point(color = "lightblue", size = 5) +
+  geom_node_text(aes(label = name), vjust = 1, hjust = 1) +
+  theme_void()
+```
+>Note that this is a visualization of a Markov chain, a common model in text processing. In a Markov chain, each choice of word depends only on the previous word. In this case, a random generator following this model might spit out “dear”, then “sir”, then “william/walter/thomas/thomas’s”, by following each word to the most common words that follow it. To make the visualization interpretable, we chose to show only the most common word to word connections, but one could imagine an enormous graph representing all connections that occur in the text.[@TextMining_R]
+
+```{r functions_for_cleaning, echo=FALSE, eval=FALSE}
+library(dplyr)
+library(tidyr)
+library(tidytext)
+library(ggplot2)
+library(igraph)
+library(ggraph)
+
+count_bigrams <- function(dataset) {
+  dataset %>%
+    unnest_tokens(bigram, text, token = "ngrams", n = 2) %>%
+    separate(bigram, c("word1", "word2"), sep = " ") %>%
+    filter(!word1 %in% stop_words$word,
+           !word2 %in% stop_words$word) %>%
+    count(word1, word2, sort = TRUE)
+}
+
+visualize_bigrams <- function(bigrams) {
+  set.seed(2016)
+  a <- grid::arrow(type = "closed", length = unit(.15, "inches"))
+  
+  bigrams %>%
+    graph_from_data_frame() %>%
+    ggraph(layout = "fr") +
+    geom_edge_link(aes(edge_alpha = n), show.legend = FALSE, arrow = a) +
+    geom_node_point(color = "lightblue", size = 5) +
+    geom_node_text(aes(label = name), vjust = 1, hjust = 1) +
+    theme_void()
+}
+# the King James version is book 10 on Project Gutenberg:
+library(gutenbergr)
+kjv <- gutenberg_download(10)
+library(stringr)
+
+kjv_bigrams <- kjv %>%
+  count_bigrams()
+
+# filter out rare combinations, as well as digits
+kjv_bigrams %>%
+  filter(n > 40,
+         !str_detect(word1, "\\d"),
+         !str_detect(word2, "\\d")) %>%
+  visualize_bigrams()
+```
+
+```{r tidyflowchartch5, echo = FALSE, out.width = '100%', fig.cap = "A flowchart of a typical text analysis that combines tidytext with other tools and data formats, particularly the tm or quanteda packages. This chapter shows how to convert back and forth between document-term matrices and tidy data frames, as well as converting from a Corpus object to a text data frame."}
+knitr::include_graphics("images/tidyflow-ch-5.png")
+```
+One of the most common structures that text mining packages work with is the document-term matrix (or DTM). This is a matrix where:
+
++ each row represents one document (such as a book or article),
++ each column represents one term, and
++ each value (typically) contains the number of appearances of that term in that document.
+
+Since most pairings of document and term do not occur (they have the value zero), DTMs are usually implemented as sparse matrices. 
+
 ```{r cleanup, include=FALSE}
-quanteda_options(threads=2)
+#quanteda_options(threads=2)
 ```
