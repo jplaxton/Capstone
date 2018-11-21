@@ -248,6 +248,9 @@ One of the most common structures that text mining packages work with is the doc
 
 Since most pairings of document and term do not occur (they have the value zero), DTMs are usually implemented as sparse matrices. 
 
+
+Editorial comment on the cited reference of Text Mining Infrastructure in R...it is outdated.  Much of the content does not work as the TM package has been revised numerous times since the papaer was written.  Functions have been renamed, deprecated, or rewritten creating churn for a researacher attempting to duplicate examples.  It is best not to attempt to replicate but just read for intent.
+
 ```{r cleanup, include=FALSE}
 #quanteda_options(threads=2)
 ```
