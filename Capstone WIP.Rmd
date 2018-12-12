@@ -112,77 +112,73 @@ A token is a meaningful unit of text, most often a word, that we are interested 
 ```{r tokenize, cache=TRUE}
 dataTokens <- tokens(my_corpus, what='word', remove_numbers = TRUE, 
                      remove_punct = TRUE, remove_symbols = TRUE, remove_separators = TRUE)
-ngram2 <- tokens_ngrams(dataTokens, n = 2L, skip = 0L, concatenator = " ") 
-ngram3 <- tokens_ngrams(dataTokens, n = 3L, skip = 0L, concatenator = " ")
-# make a dfm, removing stopwords and applying stemming
-myStemMat <- dfm(my_corpus, remove = stopwords("english"), stem = TRUE, 
-                 remove_punct = TRUE, remove_symbols = TRUE, remove_separators = TRUE)
-d1 <- textstat_frequency(myStemMat, n=20)
+nostop_dataTokens <- tokens_remove(dataTokens, pattern = stopwords('en'))
+
+myDFM <- dfm(dataTokens)
+d1 <- textstat_frequency(myDFM, n=20)
 p <- ggplot(d1, aes(x=reorder(feature, -frequency), y = frequency)) +
         geom_bar(stat = "identity") +
-        geom_text(aes(label = frequency), size=2, vjust = -0.2) +
-        labs(x = NULL, y = "Frequency", title = "1-Grams") +
+        labs(x = NULL, y = "Frequency", title = "1-Grams - w/Stop Words") +
         theme(plot.title = element_text(hjust=0.5),
               axis.text.x = element_text(angle=30, hjust = 1, vjust = 1))
 p
-# versus corpus word frequency with stopwords and no stemming
-d3 <- textstat_frequency(dfm(dataTokens), n=20)
-p <- ggplot(d3, aes(x=reorder(feature, -frequency), y = frequency)) +
+nostop_myDFM <- dfm(nostop_dataTokens)
+ns_d1 <- textstat_frequency(nostop_myDFM, n=20)
+p <- ggplot(ns_d1, aes(x=reorder(feature, -frequency), y = frequency)) +
         geom_bar(stat = "identity") +
-        labs(x = NULL, y = "Frequency", title = "1-Grams w/ Stop Words and No Stemming") +
+        geom_text(aes(label = frequency), size=2, vjust = -0.2) +
+        labs(x = NULL, y = "Frequency", title = "1-Grams - Stop Words Removed") +
         theme(plot.title = element_text(hjust=0.5),
               axis.text.x = element_text(angle=30, hjust = 1, vjust = 1))
 p
-
-textplot_wordcloud(myStemMat, min_count = 6, random_order = FALSE,
-                   rotation = .25, 
-                   color = RColorBrewer::brewer.pal(8,"Dark2"))
-
 ```
 
 2. What are the frequencies of 2-grams and 3-grams in the dataset?
 
+The ngrams were investigated by looking at frequency of 2 and 3 grams with and without stopwords.
 ```{r ngram_freq, cache=TRUE}
-# bigram frequency
-d4 <- textstat_frequency(dfm(ngram2),n=20)
-p <- ggplot(d4, aes(x=reorder(feature, -frequency), y = frequency)) +
+ngram2 <- tokens_ngrams(dataTokens, n = 2L, skip = 0L, concatenator = " ") 
+nostop_ngram2 <- tokens_ngrams(nostop_dataTokens, n=2L, skip = 0L, concatenator = " ")
+
+d2 <- textstat_frequency(dfm(ngram2),n=20)
+p <- ggplot(d2, aes(x=reorder(feature, -frequency), y = frequency)) +
         geom_bar(stat = "identity") +
-        labs(x = NULL, y = "Frequency", title = "2-Grams") +
+        labs(x = NULL, y = "Frequency", title = "2-Grams - w/Stop Words") +
+        theme(plot.title = element_text(hjust=0.5), 
+              axis.text.x = element_text(angle=30, hjust = 1, vjust = 1))
+p
+ns_d2 <- textstat_frequency(dfm(nostop_ngram2),n=20)
+p <- ggplot(ns_d2, aes(x=reorder(feature, -frequency), y = frequency)) +
+        geom_bar(stat = "identity") +
+        labs(x = NULL, y = "Frequency", title = "2-Grams - Stop Words Removed") +
         theme(plot.title = element_text(hjust=0.5), 
               axis.text.x = element_text(angle=30, hjust = 1, vjust = 1))
 p
 
-d5 <- textstat_frequency(dfm(ngram3),n=20)
-p <- ggplot(d5, aes(x=reorder(feature, -frequency), y = frequency)) +
+ngram3 <- tokens_ngrams(dataTokens, n = 3L, skip = 0L, concatenator = " ")
+nostop_ngram3 <- tokens_ngrams(nostop_dataTokens, n = 3L, skip = 0L, concatenator = " ")
+
+d3 <- textstat_frequency(dfm(ngram3),n=20)
+p <- ggplot(d3, aes(x=reorder(feature, -frequency), y = frequency)) +
         geom_bar(stat = "identity") +
-        labs(x = NULL, y = "Frequency", title = "3-Grams") +
+        labs(x = NULL, y = "Frequency", title = "3-Grams - w/Stop Words") +
+        theme(plot.title = element_text(hjust=0.5),
+              axis.text.x = element_text(angle=30, hjust = 1, vjust = 1))
+p
+
+ns_d3 <- textstat_frequency(dfm(nostop_ngram3),n=20)
+p <- ggplot(ns_d3, aes(x=reorder(feature, -frequency), y = frequency)) +
+        geom_bar(stat = "identity") +
+        labs(x = NULL, y = "Frequency", title = "3-Grams - Stop Words Removed") +
         theme(plot.title = element_text(hjust=0.5),
               axis.text.x = element_text(angle=30, hjust = 1, vjust = 1))
 p
 ```
 
 3. How many unique words do you need in a frequency sorted dictionary to cover 50% of all word instances in the language? 90%?
-```{r}
-d3 <- textstat_frequency(dfm(dataTokens))
-sumWords <- 0
-for(i in 1:length(d3$frequency)) {
-    sumWords <- sumWords + d3$frequency[i]
-    if(sumWords >= 0.5*sum(d3$frequency)){break}
-}
-
-sprintf("%d unique words constitue 50 percent of the language", i)
-
-sumWords <- 0
-for(i in 1:length(d3$frequency)) {
-    sumWords <- sumWords + d3$frequency[i]
-    if(sumWords >= 0.9*sum(d3$frequency)){break}
-}
-
-sprintf("%d unique words constitue 90 percent of the language", i)
-```
 
 ```{r uniquewords}
-termFreq <- sort(colSums(as.matrix(myStemMat)), decreasing=TRUE) 
+termFreq <- sort(colSums(as.matrix(myDFM)), decreasing=TRUE) 
 one_word_freq <- data.frame(word=names(termFreq), freq=termFreq) 
 #This function will assist us in getting the number of words needed 
 #to get to the required percentage
@@ -219,10 +215,13 @@ p
 
 4. How do you evaluate how many of the words come from foreign languages?
 
->I think that by loading a well-known and used dictionary, we can eliminate foreign words as well as incorrectly typed words.
+Through analysis of the UTF-coding and evaluating filtering results based on foreign language dictionaries, an assessment of the quantity of foreign words may be done.
 
 5. Can you think of a way to increase the coverage -- identifying words that may not be in the corpora or using a smaller number of words in the dictionary to cover the same number of phrases?
 
+Stemming may be applied to increase coverage of lower frequency varients of base words.  A concern may be the impact on the ngrams - is the varient usage contextual when creating the ngrams?
+
+## Further Insights & Challenges
 
 Editorial comment on the cited reference of Text Mining Infrastructure in R...it is outdated.  Much of the content does not work as the TM package has been revised numerous times since the papaer was written.  Functions have been renamed, deprecated, or rewritten creating churn for a researacher attempting to duplicate examples.  It is best not to attempt to replicate but just read for intent.
 
