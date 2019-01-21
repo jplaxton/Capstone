@@ -2,11 +2,12 @@
 title: "Capstone Project"
 author: "John Plaxton"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
-bibliography: ['citations.bib']
-biblio-style: "apalike"
-link-citations: true
 output:
   html_document: default
+  pdf_document: default
+link-citations: yes
+bibliography: citations.bib
+biblio-style: apalike
 ---
 
 ```{r setup, include=FALSE}
@@ -17,6 +18,7 @@ library(spacyr)
 library(tidyverse)
 library(tidytext)
 library(ggplot2)
+library(scales)
 #quanteda_options(threads=parallel::detectCores() - 2)
 ```
 
@@ -77,10 +79,9 @@ rm(twitter_lines)
 
 ## Create a Corpus
 
-Create a Corpus from the provided .txt files...
-
 Translating unstructured content from a corpus of information into a meaningful knowledge base is the task of NLP.  It is important to determine what information to keep and how to look for patterns in the structure of that information to distill meaning and context.  Unstructured content is often mixed with structured content, referred to as metadata in the context of NLP.  
 
+Create a Corpus from the provided .txt files...
 ```{r create_corpus, cache=TRUE}
 # The most common problem in loading data into R is misspecifing locations of 
 # files or directories. If a path is relative, check where you are using getwd()
@@ -92,26 +93,19 @@ my_corpus <- corpus(textin)
 metadoc(my_corpus, "language") <- "english" #adding some structured content (metadata) to the unstructured content
 summary(my_corpus, showmeta = TRUE)
 ```
+At this time, no subsetting of the Corpus has been done as the processing time is not unreasonable given the size of the data files.  Further into the project, the Corpus may need to be sampled to bring down the processing time.
 
 ## Exploratory Analysis
 
-The first step in building a predictive model for text is understanding the distribution and relationship between the words, tokens, and phrases in the text. The goal of this task is to understand the basic relationships you observe in the data and prepare to build your first linguistic models.
+The first step in building a predictive model for text is understanding the distribution and relationship between the words, tokens, and phrases in the text. The goal of this task is to understand the basic relationships observed in the data and prepare to build initial linguistic models.
 
-A token is a meaningful unit of text, most often a word, that we are interested in using for further analysis, and tokenization is the process of splitting text into tokens.
+A token is a meaningful unit of text, most often a word, that we are interested in using for further analysis.  Tokenization is the process of splitting text into tokens.
 
-###Tasks to accomplish
-
-1. **Exploratory analysis** - perform a thorough exploratory analysis of the data, understanding the distribution of words and relationship between the words in the corpora.
-
-2. **Understand frequencies of words and word pairs** - build figures and tables to understand variation in the frequencies of words and word pairs in the data.
-
-###Questions to consider
-
-1. Some words are more frequent than others - what are the distributions of word frequencies?
-
+The first step in exploratory analysis is to look at the frequency distrbution of single word tokens...
 ```{r tokenize, cache=TRUE}
 dataTokens <- tokens(my_corpus, what='word', remove_numbers = TRUE, 
-                     remove_punct = TRUE, remove_symbols = TRUE, remove_separators = TRUE)
+                     remove_punct = TRUE, remove_symbols = TRUE, 
+                     remove_separators = TRUE)
 nostop_dataTokens <- tokens_remove(dataTokens, pattern = stopwords('en'))
 
 myDFM <- dfm(dataTokens)
@@ -120,50 +114,59 @@ p <- ggplot(d1, aes(x=reorder(feature, -frequency), y = frequency)) +
         geom_bar(stat = "identity") +
         labs(x = NULL, y = "Frequency", title = "1-Grams - w/Stop Words") +
         theme(plot.title = element_text(hjust=0.5),
-              axis.text.x = element_text(angle=30, hjust = 1, vjust = 1))
+              axis.text.x = element_text(angle=30, hjust = 1, vjust = 1)) +
+        scale_y_continuous(labels = comma)
 p
 nostop_myDFM <- dfm(nostop_dataTokens)
 ns_d1 <- textstat_frequency(nostop_myDFM, n=20)
 p <- ggplot(ns_d1, aes(x=reorder(feature, -frequency), y = frequency)) +
         geom_bar(stat = "identity") +
-        geom_text(aes(label = frequency), size=2, vjust = -0.2) +
         labs(x = NULL, y = "Frequency", title = "1-Grams - Stop Words Removed") +
         theme(plot.title = element_text(hjust=0.5),
-              axis.text.x = element_text(angle=30, hjust = 1, vjust = 1))
+              axis.text.x = element_text(angle=30, hjust = 1, vjust = 1)) +
+        scale_y_continuous(labels = comma)
 p
 ```
 
-2. What are the frequencies of 2-grams and 3-grams in the dataset?
+Stop words have the highest frequency in the Corpus.  Analysis of the Corpus with stop words removed showed an order of magnitude difference in token frequency.
 
-The ngrams were investigated by looking at frequency of 2 and 3 grams with and without stopwords.
+Through analysis of the UTF-coding and evaluating/filtering tokens based on foreign language dictionaries, an assessment of the quantity of foreign words may be done.  This analysis would be done as a preprocessing step.
+
+The next step in exploratory analysis is to look at the frequency distribution of ngrams, i.e. two and three word combinations.  The ngrams were investigated by looking at frequency of 2 and 3 grams with and without stopwords.
+
 ```{r ngram_freq, cache=TRUE}
 ngram2 <- tokens_ngrams(dataTokens, n = 2L, skip = 0L, concatenator = " ") 
-nostop_ngram2 <- tokens_ngrams(nostop_dataTokens, n=2L, skip = 0L, concatenator = " ")
+nostop_ngram2 <- tokens_ngrams(nostop_dataTokens, n=2L, skip = 0L, 
+                               concatenator = " ")
 
 d2 <- textstat_frequency(dfm(ngram2),n=20)
 p <- ggplot(d2, aes(x=reorder(feature, -frequency), y = frequency)) +
         geom_bar(stat = "identity") +
         labs(x = NULL, y = "Frequency", title = "2-Grams - w/Stop Words") +
         theme(plot.title = element_text(hjust=0.5), 
-              axis.text.x = element_text(angle=30, hjust = 1, vjust = 1))
+              axis.text.x = element_text(angle=30, hjust = 1, vjust = 1)) +
+        scale_y_continuous(labels = comma)
 p
 ns_d2 <- textstat_frequency(dfm(nostop_ngram2),n=20)
 p <- ggplot(ns_d2, aes(x=reorder(feature, -frequency), y = frequency)) +
         geom_bar(stat = "identity") +
         labs(x = NULL, y = "Frequency", title = "2-Grams - Stop Words Removed") +
         theme(plot.title = element_text(hjust=0.5), 
-              axis.text.x = element_text(angle=30, hjust = 1, vjust = 1))
+              axis.text.x = element_text(angle=30, hjust = 1, vjust = 1)) +
+        scale_y_continuous(labels = comma)
 p
 
 ngram3 <- tokens_ngrams(dataTokens, n = 3L, skip = 0L, concatenator = " ")
-nostop_ngram3 <- tokens_ngrams(nostop_dataTokens, n = 3L, skip = 0L, concatenator = " ")
+nostop_ngram3 <- tokens_ngrams(nostop_dataTokens, n = 3L, skip = 0L, 
+                               concatenator = " ")
 
 d3 <- textstat_frequency(dfm(ngram3),n=20)
 p <- ggplot(d3, aes(x=reorder(feature, -frequency), y = frequency)) +
         geom_bar(stat = "identity") +
         labs(x = NULL, y = "Frequency", title = "3-Grams - w/Stop Words") +
         theme(plot.title = element_text(hjust=0.5),
-              axis.text.x = element_text(angle=30, hjust = 1, vjust = 1))
+              axis.text.x = element_text(angle=30, hjust = 1, vjust = 1)) +
+        scale_y_continuous(labels = comma)
 p
 
 ns_d3 <- textstat_frequency(dfm(nostop_ngram3),n=20)
@@ -171,13 +174,16 @@ p <- ggplot(ns_d3, aes(x=reorder(feature, -frequency), y = frequency)) +
         geom_bar(stat = "identity") +
         labs(x = NULL, y = "Frequency", title = "3-Grams - Stop Words Removed") +
         theme(plot.title = element_text(hjust=0.5),
-              axis.text.x = element_text(angle=30, hjust = 1, vjust = 1))
+              axis.text.x = element_text(angle=30, hjust = 1, vjust = 1)) +
+        scale_y_continuous(labels = comma)
 p
 ```
 
-3. How many unique words do you need in a frequency sorted dictionary to cover 50% of all word instances in the language? 90%?
+Again, the value of removing stop words is seen as the highest frequency ngrams are dominated by combinations of stop words.
 
-```{r uniquewords}
+Final step in exploratory anaylsis is to look at how large does a frequecy sorted dictionary needs to be.  Based upon the frequency evaluation of the Corpus used, the following graph demonstrates the coverage as words with decreasing usage frequency are added.  The first graph was built with the stop words included. 
+
+```{r uniquewords, echo=FALSE}
 termFreq <- sort(colSums(as.matrix(myDFM)), decreasing=TRUE) 
 one_word_freq <- data.frame(word=names(termFreq), freq=termFreq) 
 #This function will assist us in getting the number of words needed 
@@ -191,19 +197,15 @@ get_num_words <- function(pct_needed) {
     }
     return(i)
 }
-
 #Create new dataframe with first row
 df_perc_freq <- data.frame(get_num_words(10))
 f <- 20
-  
 while (f<100) {
     df_perc_freq <- rbind(df_perc_freq, get_num_words(f))
     f <- f+ 10
 }
-  
 df_perc_freq <- cbind(df_perc_freq, c(10,20,30,40,50,60,70,80,90))
 colnames(df_perc_freq) <- c("numWords", "Pct")
-
 p <- ggplot(df_perc_freq, aes(x=Pct, y = numWords)) +
         geom_line() +
         geom_point() +
@@ -213,13 +215,49 @@ p <- ggplot(df_perc_freq, aes(x=Pct, y = numWords)) +
 p
 ```
 
-4. How do you evaluate how many of the words come from foreign languages?
+With stop words removed, the Unique Word Coverage graph looks as follows:
 
-Through analysis of the UTF-coding and evaluating filtering results based on foreign language dictionaries, an assessment of the quantity of foreign words may be done.
+```{r uniquewords_nostop, echo=FALSE}
+termFreq <- sort(colSums(as.matrix(nostop_myDFM)), decreasing=TRUE) 
+one_word_freq <- data.frame(word=names(termFreq), freq=termFreq) 
+#This function will assist us in getting the number of words needed 
+#to get to the required percentage
+get_num_words <- function(pct_needed) { 
+    i = 1
+    pct = 0
+    while (pct <= pct_needed){
+      pct = pct + (one_word_freq$freq[i]/sum(one_word_freq$freq) * 100)
+      i = i + 1
+    }
+    return(i)
+}
+#Create new dataframe with first row
+df_perc_freq <- data.frame(get_num_words(10))
+f <- 20
+while (f<100) {
+    df_perc_freq <- rbind(df_perc_freq, get_num_words(f))
+    f <- f+ 10
+}
+df_perc_freq <- cbind(df_perc_freq, c(10,20,30,40,50,60,70,80,90))
+colnames(df_perc_freq) <- c("numWords", "Pct")
+p <- ggplot(df_perc_freq, aes(x=Pct, y = numWords)) +
+        geom_line() +
+        geom_point() +
+        labs(x = "Percent", y = "Number of Words", 
+             title = "Number of Unique Words Needed to Cover all Instances") +
+        theme(plot.title = element_text(hjust=0.5))
+p
+```
 
-5. Can you think of a way to increase the coverage -- identifying words that may not be in the corpora or using a smaller number of words in the dictionary to cover the same number of phrases?
+Number of words needed for 50% coverage by a frequency sorted, no stop words dictionary is `r format(get_num_words(50), scientific=FALSE,big.mark=",")`.
 
-Stemming may be applied to increase coverage of lower frequency varients of base words.  A concern may be the impact on the ngrams - is the varient usage contextual when creating the ngrams?
+Number of words needed for 90% coverage by a frequency sorted, no stop words dictionary is `r format(get_num_words(90),scientific=FALSE,big.mark=",")`. 
+
+Removing stop words increases the size of the frequency sorted dictionary.  Stemming may be applied to increase coverage of lower frequency variants of base words without increasing the size of the dictionary.  The impact of stemming on the ngrams would need more exploration - how are word variant usage captured in the ngrams?
+
+## Concept for Next Word Prediction Model Development
+
+Starting with the 90%-coverage, frequency-sorted, no-stop-word dictionary, a prediction model would need to be built that uses 2-gram and 3-gram frequency data at the predictor of the next word.  It seems that the Shiny app would start with subsetting the 2-gram and 3-gram frequency DFMs by the word entered by the user.  Subsetting should stream line the predictor model as it would only look at the frequency numbers relevant to the starting word.  I am going to need to iterate through these ideas.
 
 ## Further Insights & Challenges
 
